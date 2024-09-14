@@ -35,10 +35,15 @@ class LoginScreenState extends State<LoginScreen> {
               context,
               MaterialPageRoute(builder: (context) => const AdminHomeScreen()),
             );
-          } else {
+          } else if (user.role == 'member') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const MemberHomeScreen()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Your account is pending approval.')),
             );
           }
         }

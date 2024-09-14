@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import 'package:logging/logging.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -11,37 +12,42 @@ class RegistrationScreen extends StatefulWidget {
 
 class RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _email = '';
-  String _password = '';
+  final _logger = Logger('RegistrationScreen');
   String _name = '';
   String _npm = '';
+  String _email = '';
+  String _password = '';
 
-  Future<void> _register(BuildContext context, AuthService authService) async {
+  Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      final user = await authService.register(_npm, _password, _name, _email);
-      if (!mounted) return;
-      setState(() {
-        if (user != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Registration successful. Please wait for admin approval.')),
-          );
-          Navigator.of(context).pop();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration failed')),
-          );
-        }
-      });
+      try {
+        _logger.info('Attempting to register user with NPM: $_npm');
+        final authService = Provider.of<AuthService>(context, listen: false);
+        await authService.register(_npm, _email, _password, _name);
+        _logger.info('Registration successful for NPM: $_npm');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Registration successful! Please wait for admin approval.')),
+        );
+        Navigator.pop(context); // Go back to login screen
+      } catch (e) {
+        _logger.severe('Registration failed: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Register')),
       body: Form(
@@ -52,28 +58,36 @@ class RegistrationScreenState extends State<RegistrationScreen> {
             children: [
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Name'),
-                validator: (value) => value!.isEmpty ? 'Enter a name' : null,
+                validator: (value) => value!.isEmpty ? 'Enter your name' : null,
                 onSaved: (value) => _name = value!,
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'NPM'),
-                validator: (value) => value!.isEmpty ? 'Enter NPM' : null,
+                validator: (value) => value!.isEmpty ? 'Enter your NPM' : null,
                 onSaved: (value) => _npm = value!,
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) => value!.isEmpty ? 'Enter an email' : null,
+                validator: (value) {
+                  if (value!.isEmpty) return 'Enter your email';
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(value)) {
+                    return 'Enter a valid email';
+                  }
+                  return null;
+                },
                 onSaved: (value) => _email = value!,
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Password'),
                 obscureText: true,
-                validator: (value) =>
-                    value!.isEmpty ? 'Enter a password' : null,
+                validator: (value) => value!.length < 6
+                    ? 'Password must be at least 6 characters'
+                    : null,
                 onSaved: (value) => _password = value!,
               ),
               ElevatedButton(
-                onPressed: () => _register(context, authService),
+                onPressed: _register,
                 child: const Text('Register'),
               ),
             ],

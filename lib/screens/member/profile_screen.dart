@@ -29,14 +29,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _logout(BuildContext context, AuthService authService) async {
-    await authService.signOut();
-    if (!mounted) return;
-    setState(() {
-      Navigator.of(context).pushReplacementNamed('/');
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
@@ -84,10 +76,6 @@ class ProfileScreenState extends State<ProfileScreen> {
                     child: const Text('Update Profile'),
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => _logout(context, authService),
-                    child: const Text('Logout'),
-                  ),
                 ],
               ),
             ),

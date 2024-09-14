@@ -8,7 +8,6 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Logger _logger = Logger('AuthService');
 
-  // Get current user
   app_user.User? get currentUser {
     final user = _auth.currentUser;
     if (user != null) {
@@ -95,6 +94,10 @@ class AuthService {
     try {
       _logger.info('Attempting to register new user with NPM: $npm');
 
+      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+        throw Exception('Invalid email format');
+      }
+
       QuerySnapshot existingUser = await _firestore
           .collection('users')
           .where('npm', isEqualTo: npm)
@@ -115,7 +118,7 @@ class AuthService {
           'name': name,
           'npm': npm,
           'email': email,
-          'role': 'student',
+          'role': 'pending',
         });
 
         _logger.info('New user registered successfully: ${user.uid}');
@@ -123,7 +126,7 @@ class AuthService {
           uid: user.uid,
           name: name,
           npm: npm,
-          role: 'student',
+          role: 'pending',
           email: email,
         );
       } else {
@@ -133,7 +136,13 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       _logger.severe(
           'Firebase Auth Error during registration: ${e.code} - ${e.message}');
-      throw Exception('Registration failed: ${e.message}');
+      if (e.code == 'weak-password') {
+        throw Exception('The password provided is too weak.');
+      } else if (e.code == 'email-already-in-use') {
+        throw Exception('The account already exists for that email.');
+      } else {
+        throw Exception('Registration failed: ${e.message}');
+      }
     } on FirebaseException catch (e) {
       _logger.severe(
           'Firestore Error during registration: ${e.code} - ${e.message}');
